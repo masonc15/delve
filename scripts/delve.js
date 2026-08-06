@@ -27,67 +27,41 @@ const {
     availableAmount,
     itemAmount,
     putCloset,
+    takeCloset,
     myMp,
     canAdventure,
     toLocation,
     userConfirm,
     myLevel,
     myHp,
+    myPath,
     toSkill,
     haveSkill,
     useSkill
 } = require('kolmafia');
 
-const SAFETY_MARGIN = 1.05;
+const {
+    getLevel,
+    getChallenge,
+    isUnrestrictedPath,
+    requiredStat,
+    requiredMp,
+    requiredHp,
+    requiredElement,
+    canSurviveMonster
+} = require('./delve-helpers');
 
 // Stat objects
 const MOX = toStat('Moxie');
 const MYS = toStat('Mysticality');
 const MUS = toStat('Muscle');
 
-// Challenge types
-const BUFF = "buff";
-const MONSTER = "monster";
-const STAT = "stat";
-const ELEMENT = "element";
-const HP = "hp";
-const MP = "mp";
-const REWARD = "reward";
-
-const CHALLENGE_MAP = {
-    "twopills": BUFF + ",muscle,mysticality",
-    "figurecard": BUFF + ",mysticality,moxie",
-    "twojackets": BUFF + ",moxie,muscle",
-    "hydra": MONSTER + ",X-headed Hydra",
-    "stonegolem": MONSTER + ",X Stone Golem",
-    "eyebeast": MONSTER + ",Beast with X Eyes",
-    "earbeast": MONSTER + ",Beast with X Ears",
-    "beergolem": MONSTER + ",X Bottles of Beer Golem",
-    "fernghost": MONSTER + ",Ghost of Fernswarthy's Grandfather",
-    "dimhorror": MONSTER + ",X-dimensional horror",
-    "bigstatue": STAT + ",muscle",
-    "typewriters": STAT + ",muscle",
-    "bigmallet": STAT + ",muscle",
-    "darkshards": STAT + ",mysticality",
-    "voodoo": STAT + ",mysticality",
-    "mops": STAT + ",mysticality",
-    "pooltable": STAT + ",moxie",
-    "sorority": STAT + ",moxie",
-    "bigbaby": STAT + ",moxie",
-    "goblinaxe": STAT + ",moxie",
-    "snowballbat": ELEMENT + ",spooky,cold",
-    "onnastick": ELEMENT + ",stench,hot",
-    "document": ELEMENT + ",hot,spooky",
-    "coldmarg": ELEMENT + ",cold,sleaze",
-    "fratbong": ELEMENT + ",sleaze,stench",
-    "powderbox": MP,
-    "haiku11": HP,
-    "angel": REWARD + ",100",
-    "duskdoor": REWARD + ",200",
-    "lepbell": REWARD + ",300",
-    "corpse": REWARD + ",400",
-    "chest": REWARD + ",500"
-};
+const DIVINE_COMBAT_ITEMS = [
+    toItem('divine can of silly string'),
+    toItem('divine blowout'),
+    toItem('divine noisemaker')
+];
+const GAS_BALLOON = toItem('gas balloon');
 
 const ALL_STAT_BUFFS = [
     toEffect('Gr8ness'),
@@ -137,17 +111,99 @@ const ARGS = {
     ignoreMonsterCheck: false
 };
 
+function isKnown(value) {
+    return value && value.name && value.name.toLowerCase() !== 'none';
+}
+
+function currentPathName() {
+    const path = myPath();
+    return path && path.name ? path.name : String(path);
+}
+
+function retrieveRequired(amount, item) {
+    if (!retrieveItem(amount, item) || itemAmount(item) < amount) {
+        throw new Error("Could not retrieve " + amount + " " + item.name + ".");
+    }
+}
+
+function restoreRequiredHp(amount) {
+    if (!restoreHp(amount)) {
+        throw new Error("Could not restore enough HP.");
+    }
+}
+
 function customRestoreMp(amount) {
     if (amount >= 1000 && myMaxmp() - myMp() >= amount) {
         const sausagesToEat = Math.floor(amount / 1000);
-        const sausagesRemainingToday = parseInt(getProperty('_sausagesEaten'));
-        if (sausagesToEat < (23 - sausagesRemainingToday) && availableAmount(toItem('magical sausage casing')) >= sausagesToEat) {
-            eat(toItem('magical sausage'), sausagesToEat);
-            amount -= sausagesToEat * 1000;
+        const sausagesEatenToday = parseInt(getProperty('_sausagesEaten'), 10) || 0;
+        const sausagesRemainingToday = Math.max(0, 23 - sausagesEatenToday);
+        const casings = toItem('magical sausage casing');
+        if (sausagesToEat <= sausagesRemainingToday && availableAmount(casings) >= sausagesToEat) {
+            if (eat(toItem('magical sausage'), sausagesToEat)) {
+                amount -= sausagesToEat * 1000;
+            }
         }
     }
 
-    restoreMp(amount);
+    if (!restoreMp(amount)) {
+        throw new Error("Could not restore enough MP.");
+    }
+}
+
+function preflight() {
+    const pathName = currentPathName();
+    if (!isUnrestrictedPath(pathName)) {
+        throw new Error("Delve only supports unrestricted aftercore; " + pathName + " is a restricted path.");
+    }
+
+    if (!canAdventure(toLocation(`Fernswarthy's Basement`))) {
+        throw new Error('You do not have access to the basement.');
+    }
+
+    if (myAdventures() <= 0) {
+        throw new Error('You do not have any adventures left.');
+    }
+
+    if (!haveSkill(toSkill('Saucegeyser'))) {
+        throw new Error('You need Saucegeyser in the Fernswarthy CCS.');
+    }
+
+    [...DIVINE_COMBAT_ITEMS, GAS_BALLOON].forEach((item) => {
+        if (!isKnown(item)) {
+            throw new Error('KoLmafia does not know the required Delve item.');
+        }
+    });
+}
+
+function restoreClosetedItems(items) {
+    for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i].item;
+        const count = items[i].count;
+        if (!takeCloset(count, item)) {
+            throw new Error("Could not return " + count + " " + item.name + " from the closet.");
+        }
+    }
+}
+
+function closetNonCombatItems(combatItem) {
+    const moved = [];
+    try {
+        DIVINE_COMBAT_ITEMS.forEach((item) => {
+            if (item !== combatItem) {
+                const count = itemAmount(item);
+                if (count > 0) {
+                    if (!putCloset(count, item)) {
+                        throw new Error("Could not put " + item.name + " in the closet.");
+                    }
+                    moved.push({ item, count });
+                }
+            }
+        });
+    } catch (error) {
+        restoreClosetedItems(moved);
+        throw error;
+    }
+    return moved;
 }
 
 /**
@@ -166,33 +222,6 @@ function tryMaximize(maximizerString) {
         cliExecute("refresh equipment");
         cliExecute("maximize " + maximizerString);
     }
-}
-
-/**
- * Get basement level from page html
- * @param {string} page  page html
- * @return {number} level
- */
-function getLevel(page) {
-    const regExp = new RegExp(/Fernswarthy's Basement, Level (\d+)/);
-
-    return regExp.test(page) ? parseInt(regExp.exec(page)[1]) : 0;
-}
-
-/**
- * Determine the current basement challenge using the image
- * @param {string} page  page html
- * @return {string} value from CHALLENGE_MAP
- */
-function getChallenge(page) {
-    const images = Object.keys(CHALLENGE_MAP);
-    for (let i = 0; i < images.length; i++) {
-        if (page.includes(images[i] + '.gif')) {
-            return CHALLENGE_MAP[images[i]];
-        }
-    }
-
-    throw new Error("Unrecognised challenge");
 }
 
 /**
@@ -270,15 +299,6 @@ function indefiniteArticle(noun) {
 }
 
 /**
- * Calculate required buff stat for a given level
- * @param {number} level  basement level
- * @return {number} needed buffed stat
- */
-function requiredStat(level) {
-    return (Math.pow(level, 1.4) + 2) * SAFETY_MARGIN;
-}
-
-/**
  * See if given stat is buffed enough for the basement level
  * @param {number} level  basement level
  * @param {Stat} stat  stat to check
@@ -321,32 +341,14 @@ function improveStat(required, step, stat) {
  * @return {boolean} true if monster can be killed
  */
 function checkMonster(level, m) {
-    const attack = Math.max(0, expectedDamage(m));
-    const hp = monsterHp(m);
-
-    const divineDamage = myBuffedstat(myHighestBuffedStat());
-    const actualDamage = Math.max(1, divineDamage - Math.floor(divineDamage * m.physicalResistance / 100));
-
-    let survivableRounds = Math.floor(myMaxhp() / attack);
-    const roundsToKill = Math.floor(hp / actualDamage);
-
-    if (jumpChance(m) <= 100) {
-        survivableRounds -= -1;
-    } else {
-        survivableRounds += 3;
-    }
-
-    return survivableRounds > roundsToKill || m.physicalResistance === 100;
-    // return jumpChance(m) === 100 || attack < myMaxhp();
-}
-
-/**
- * Get required MP or HP for the given level
- * @param {number} level  basement level
- * @return {number} required MP
- */
-function requiredMp(level) {
-    return 1.67 * Math.pow(level, 1.4) * SAFETY_MARGIN;
+    return canSurviveMonster({
+        attack: Math.max(0, expectedDamage(m)),
+        hp: monsterHp(m),
+        maxHp: myMaxhp(),
+        divineDamage: myBuffedstat(myHighestBuffedStat()),
+        physicalResistance: m.physicalResistance || 0,
+        jumpChance: jumpChance(m)
+    });
 }
 
 /**
@@ -372,14 +374,12 @@ function improveMp(required, step) {
             cliExecute("gain " + required + " mp");
             return true;
     }
-}
 
-function requiredHp(level) {
-    return Math.pow(level, 1.415) * 10 * (100 - damageAbsorptionPercent()) / 100;
+    return false;
 }
 
 function checkHp(level) {
-    return myMaxhp() > requiredHp(level);
+    return myMaxhp() > requiredHp(level, damageAbsorptionPercent());
 }
 
 function improveHp(required, step) {
@@ -404,13 +404,6 @@ function improveHp(required, step) {
     return false;
 }
 
-function requiredElement(level, e1, e2) {
-    const damage = (4.48 * Math.pow(level, 1.4)) + 8;
-    const e1_damage = damage * ((100 - elementalResistance(e1)) / 100);
-    const e2_damage = damage * ((100 - elementalResistance(e2)) / 100);
-    return Math.ceil((e1_damage + e2_damage) * SAFETY_MARGIN);
-}
-
 /**
  * check the given elements
  * @param {number} level  basement level
@@ -421,7 +414,15 @@ function requiredElement(level, e1, e2) {
  */
 function checkElement(level, e1, e2, factor) {
     factor = factor || 1;
-    return myMaxhp() > requiredElement(level, e1, e2) * factor;
+    return myMaxhp() > requiredElementFor(level, e1, e2) * factor;
+}
+
+function requiredElementFor(level, e1, e2) {
+    return requiredElement(
+        level,
+        elementalResistance(e1),
+        elementalResistance(e2)
+    );
 }
 
 function improveElement(requirement, step, e1, e2) {
@@ -477,6 +478,9 @@ const TESTS = {
      */
     MONSTER: function (level, challenge) {
         const m = toMonster(challenge[1]);
+        if (!isKnown(m)) {
+            throw new Error("KoLmafia does not know the basement monster " + challenge[1] + ".");
+        }
 
         print("Level " + level + " has you fighting " + indefiniteArticle(m.name), "green");
 
@@ -485,35 +489,52 @@ const TESTS = {
 
         switch (attackStat) {
             case MUS:
-                combatItem = toItem('divine noisemaker');
+                combatItem = DIVINE_COMBAT_ITEMS[2];
                 break;
             case MYS:
-                combatItem = toItem('divine can of silly string');
+                combatItem = DIVINE_COMBAT_ITEMS[0];
                 break;
             case MOX:
-                combatItem = toItem('divine blowout');
+                combatItem = DIVINE_COMBAT_ITEMS[1];
                 break;
         }
 
+        if (!isKnown(combatItem)) {
+            throw new Error("Could not choose a divine combat item.");
+        }
+
+        let movedItems = [];
         cliExecute('refresh inventory');
-        [toItem('divine can of silly string'), toItem('divine blowout'), toItem('divine noisemaker')].forEach((item) => {
-            if (item !== combatItem) {
-                putCloset(item, itemAmount(item));
+        try {
+            movedItems = closetNonCombatItems(combatItem);
+            retrieveRequired(10, combatItem);
+            retrieveRequired(1, GAS_BALLOON);
+            cliExecute("maximize effective, hp, dr, da, " + attackStat);
+
+            if (!(ARGS.ignoreMonsterCheck || checkMonster(level, m))) {
+                throw new Error("Won't survive fighting " + m.name + " at level " + level);
             }
-        });
 
-        retrieveItem(10, combatItem);
-        retrieveItem(1, toItem('gas balloon'));
-        cliExecute("maximize effective, hp, dr, da, " + attackStat);
-
-        if (ARGS.ignoreMonsterCheck || checkMonster(level, m)) {
-            restoreHp(myMaxhp());
+            restoreRequiredHp(myMaxhp());
             customRestoreMp(1000);
 
             dive();
-            runCombat();
-        } else {
-            throw new Error("Won't survive fighting " + m.name + " at level " + level);
+            const combatResult = runCombat();
+            if (!combatResult || String(combatResult).trim() === '') {
+                throw new Error("Combat with " + m.name + " did not run.");
+            }
+            if (myHp() <= 0 || haveEffect(toEffect('Beaten Up'))) {
+                throw new Error("Combat with " + m.name + " did not end safely.");
+            }
+        } catch (error) {
+            if (movedItems.length > 0) {
+                try {
+                    restoreClosetedItems(movedItems);
+                } catch (restoreError) {
+                    throw new Error(error.message + " " + restoreError.message);
+                }
+            }
+            throw error;
         }
     },
     /**
@@ -541,14 +562,14 @@ const TESTS = {
     HP: function (level) {
         print("Level " + level + " tests your HP", "green");
 
-        const required = requiredHp(level);
+        const required = requiredHp(level, damageAbsorptionPercent());
         for (let i = 0; !checkHp(level); i++) {
             if (!improveHp(required, i)) {
                 throw new Error("You need " + parseInt(required - myMaxhp()) + " more HP");
             }
         }
 
-        restoreHp(required);
+        restoreRequiredHp(required);
         dive();
     },
     /**
@@ -563,20 +584,21 @@ const TESTS = {
         print("Level " + level + " tests your " + e1 + " and " + e2 + " resistance", "green");
 
         for (let i = 0; !checkElement(level, e1, e2, i === 0 ? 2 : 1); i++) {
-            const required = requiredElement(level, e1, e2);
+            const required = requiredElementFor(level, e1, e2);
             if (!improveElement(required, i, e1, e2)) {
                 throw new Error("You need " + required - myMaxhp() + " more HP (or more " + e1 + " or " + e2 + " resistance)");
             }
         }
 
-        restoreHp(requiredElement(level, e1, e2) + 1);
+        restoreRequiredHp(requiredElementFor(level, e1, e2) + 1);
         dive();
     },
     REWARD: function (level, challenge) {
         print("Level " + level + " gives you a reward", "green");
 
         if (challenge[1] === '500') {
-            throw new Error("Got your telescope! Take it manually and if you run this again we'll just adventure indefinitely");
+            print("Got your telescope! Take it manually before running Delve again.", "green");
+            return;
         }
 
         dive();
@@ -598,37 +620,41 @@ const TESTS = {
 function handleChallenge() {
     const page = visitUrl('basement.php');
     const level = getLevel(page);
+    if (level < 1) {
+        throw new Error('Could not determine the current basement level.');
+    }
+
     const challenge = getChallenge(page);
     const parts = challenge.split(',');
 
     const testName = parts[0].toUpperCase();
     const testFunc = TESTS[testName];
+    if (!testFunc) {
+        throw new Error('Unrecognised basement challenge type: ' + parts[0]);
+    }
+
     testFunc(level, parts);
 
-    if (haveEffect(toEffect('Beaten Up'))) {
-        throw Error('Oops. We got beaten up somehow.');
+    if (myHp() <= 0 || haveEffect(toEffect('Beaten Up'))) {
+        throw new Error('Oops. We got beaten up somehow.');
     }
 
     return level;
 }
 
 function main(args) {
+    ARGS.ignoreMonsterCheck = Boolean(args && args.includes('noCheck'));
+    try {
+        preflight();
 
-    if (!canAdventure(toLocation(`Fernswarthy's Basement`))) {
-        print('You do not have access to the basement', 'red');
-        return;
-    }
-
-    if (myLevel() < 30) {
-        if (!userConfirm("It's suggested to be level 30 before basement diving. Are you sure you want to proceed?")) {
+        if (myLevel() < 30 && !userConfirm("It's suggested to be level 30 before basement diving. Are you sure you want to proceed?")) {
             return;
         }
-    }
 
-    ARGS.ignoreMonsterCheck = args && args.includes('noCheck');
-    try {
-        while (handleChallenge() < 500 && myAdventures() > 0) {
-            continue;
+        while (myAdventures() > 0) {
+            if (handleChallenge() >= 500) {
+                return;
+            }
         }
     } catch (e) {
         print(e.message, "red");
