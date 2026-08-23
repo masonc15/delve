@@ -363,7 +363,7 @@ function checkMp(level) {
 function improveMp(required, step) {
     switch (step) {
         case 0:
-            cliExecute("maximize " + required + 1 + " mp, switch Left-Hand Man, switch Disembodied Hand");
+            cliExecute("maximize " + Math.ceil(required + 1) + " mp, switch Left-Hand Man, switch Disembodied Hand");
             return true;
         case 1:
         case 2:
@@ -385,7 +385,7 @@ function checkHp(level) {
 function improveHp(required, step) {
     switch (step) {
         case 0:
-            cliExecute("maximize " + required + 1 + " hp, DA, switch Left-Hand Man, switch Disembodied Hand");
+            cliExecute("maximize " + Math.ceil(required + 1) + " hp, DA, switch Left-Hand Man, switch Disembodied Hand");
             return true;
         case 1:
             haveSkill(toSkill('Ghostly Shell')) && useSkill(toSkill('Ghostly Shell'));
@@ -397,7 +397,7 @@ function improveHp(required, step) {
             improveStat(required, step, MUS);
             return true;
         case 4:
-            cliExecute("gain " + required + " hp");
+            cliExecute("gain " + Math.ceil(required) + " hp");
             return true;
     }
 
@@ -463,9 +463,9 @@ const TESTS = {
         const required = requiredStat(level);
         print("Level " + level + " tests your " + stat, "green");
 
-        for (let i = 0; !checkStat(level, stat); i++) {
+        for (var i = 0; !checkStat(level, stat); i++) {
             if (!improveStat(required, i, stat)) {
-                throw new Error("You need " + required - myBuffedstat(stat) + " more " + stat);
+                throw new Error("You need " + Math.ceil(required - myBuffedstat(stat)) + " more " + stat);
             }
         }
 
@@ -546,9 +546,9 @@ const TESTS = {
         print("Level " + level + " tests your MP", "green");
 
         const required = requiredMp(level);
-        for (let i = 0; !checkMp(level); i++) {
+        for (var i = 0; !checkMp(level); i++) {
             if (!improveMp(required, i)) {
-                throw new Error("You need " + required - myMaxmp() + " more MP");
+                throw new Error("You need " + Math.ceil(required - myMaxmp()) + " more MP");
             }
         }
 
@@ -563,9 +563,9 @@ const TESTS = {
         print("Level " + level + " tests your HP", "green");
 
         const required = requiredHp(level, damageAbsorptionPercent());
-        for (let i = 0; !checkHp(level); i++) {
+        for (var i = 0; !checkHp(level); i++) {
             if (!improveHp(required, i)) {
-                throw new Error("You need " + parseInt(required - myMaxhp()) + " more HP");
+                throw new Error("You need " + Math.ceil(required - myMaxhp()) + " more HP");
             }
         }
 
@@ -583,10 +583,10 @@ const TESTS = {
 
         print("Level " + level + " tests your " + e1 + " and " + e2 + " resistance", "green");
 
-        for (let i = 0; !checkElement(level, e1, e2, i === 0 ? 2 : 1); i++) {
+        for (var i = 0; !checkElement(level, e1, e2, i === 0 ? 2 : 1); i++) {
             const required = requiredElementFor(level, e1, e2);
             if (!improveElement(required, i, e1, e2)) {
-                throw new Error("You need " + required - myMaxhp() + " more HP (or more " + e1 + " or " + e2 + " resistance)");
+                throw new Error("You need " + Math.ceil(required - myMaxhp()) + " more HP (or more " + e1 + " or " + e2 + " resistance)");
             }
         }
 
