@@ -62,30 +62,56 @@ const DIVINE_COMBAT_ITEMS = [
     toItem('divine noisemaker')
 ];
 const GAS_BALLOON = toItem('gas balloon');
+const SAUCEGEYSER = toSkill('Saucegeyser');
+const MAX_MP_DRINK = toItem('mulled hobo wine');
+const MAX_MP_DRINK_EFFECT = toEffect("Burnt 'n' Turnt");
 
-const ALL_STAT_BUFFS = [
-    toEffect('Gr8ness'),
-    toEffect('Trivia Master'),
-    toEffect('Tomato Power'),
-    toEffect('Big'),
-    toEffect('Triple-Sized')
-];
+function isKnown(value) {
+    return value && value.name && value.name.toLowerCase() !== 'none';
+}
+
+function isUsableEffect(buff) {
+    return isKnown(buff) && typeof buff.default === 'string' && buff.default !== '';
+}
+
+function usableEffects(names) {
+    var buffs = [];
+    for (var i = 0; i < names.length; i++) {
+        var buff = toEffect(names[i]);
+        if (isUsableEffect(buff)) {
+            buffs.push(buff);
+        }
+    }
+    return buffs;
+}
+
+const ALL_STAT_BUFFS = usableEffects([
+    'Gr8ness',
+    'Trivia Master',
+    'Tomato Power',
+    'Big',
+    'Go Get \'Em, Tiger!'
+]);
 
 const STAT_BUFFS = {
-    Muscle: [
-        toEffect('Phorcefullness'),
-        toEffect('Quiet Determination')
-    ],
-    Mysticality: [
-        toEffect('On the Shoulders of Giants'),
-        toEffect('Mystically Oiled'),
-        toEffect('Quiet Judgement')
-    ],
-    Moxie: [
-        toEffect('Cock of the Walk'),
-        toEffect('Superhuman Sarcasm'),
-        toEffect('Quiet Desperation')
-    ]
+    Muscle: usableEffects([
+        'Phorcefullness',
+        'Quiet Determination',
+        'Incredibly Hulking',
+        'Ham-Fisted'
+    ]),
+    Mysticality: usableEffects([
+        'On the Shoulders of Giants',
+        'Mystically Oiled',
+        'Quiet Judgement',
+        'Glittering Eyelashes'
+    ]),
+    Moxie: usableEffects([
+        'Cock of the Walk',
+        'Superhuman Sarcasm',
+        'Quiet Desperation',
+        'Butt-Rock Hair'
+    ])
 };
 
 const STABILIZERS = {
@@ -95,25 +121,21 @@ const STABILIZERS = {
 };
 
 const RESISTANCE_BUFFS = {};
-RESISTANCE_BUFFS[toElement('cold')] = [toEffect('Burning Hands')];
-RESISTANCE_BUFFS[toElement('hot')] = [toEffect('Fireproof Lips')];
-RESISTANCE_BUFFS[toElement('sleaze')] = [toEffect('Proprie Tea')];
-RESISTANCE_BUFFS[toElement('spooky')] = [toEffect('Pleasant Forecast')];
-RESISTANCE_BUFFS[toElement('stench')] = [toEffect('Net tea')];
+RESISTANCE_BUFFS[toElement('cold')] = usableEffects(['Burning Hands']);
+RESISTANCE_BUFFS[toElement('hot')] = usableEffects(['Fireproof Lips']);
+RESISTANCE_BUFFS[toElement('sleaze')] = usableEffects(['Proprie Tea']);
+RESISTANCE_BUFFS[toElement('spooky')] = usableEffects(['Pleasant Forecast']);
+RESISTANCE_BUFFS[toElement('stench')] = usableEffects(['Net tea']);
 
-const ALL_RESISTANCE_BUFFS = [
-    toEffect('Patent Prevention'),
-    toEffect('Oiled-Up'),
-    toEffect('Protection from Bad Stuff')
-];
+const ALL_RESISTANCE_BUFFS = usableEffects([
+    'Patent Prevention',
+    'Oiled-Up',
+    'Protection from Bad Stuff'
+]);
 
 const ARGS = {
     ignoreMonsterCheck: false
 };
-
-function isKnown(value) {
-    return value && value.name && value.name.toLowerCase() !== 'none';
-}
 
 function currentPathName() {
     const path = myPath();
@@ -230,9 +252,10 @@ function tryMaximize(maximizerString) {
  */
 function maintainBuffs(buffs) {
     buffs.forEach((buff) => {
-        if (!haveEffect(buff) && buff.default !== '') {
-            cliExecute("try; " + buff.default);
+        if (!isUsableEffect(buff) || haveEffect(buff)) {
+            return;
         }
+        cliExecute("try; " + buff.default);
     });
 }
 
@@ -279,7 +302,7 @@ function stabilize(goal) {
 
     if (myBasestat(highest) > myBasestat(goal)) {
         const effect = toEffect(STABILIZERS[highest]);
-        if (haveEffect(effect) < 1) {
+        if (isUsableEffect(effect) && haveEffect(effect) < 1) {
             cliExecute(effect.default);
         }
     }
