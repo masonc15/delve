@@ -482,7 +482,17 @@ function improveMp(required, step) {
             improveStat(required, step, MYS);
             return true;
         case 4:
-            cliExecute("gain " + required + " mp");
+            cliExecute("gain " + Math.ceil(required) + " mp");
+            return true;
+        case 5:
+            if (myInebriety() >= inebrietyLimit() || haveEffect(MAX_MP_DRINK_EFFECT) > 0) {
+                return false;
+            }
+            retrieveRequired(1, MAX_MP_DRINK);
+            cliExecute("drinksilent 1 " + MAX_MP_DRINK.name);
+            if (haveEffect(MAX_MP_DRINK_EFFECT) < 1) {
+                throw new Error("Could not drink " + MAX_MP_DRINK.name + ".");
+            }
             return true;
     }
 

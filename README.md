@@ -26,4 +26,5 @@ skip prerequisite, page, item, or combat-result checks.
 
 Level 30 is suggested before basement diving. Maintaining the required buffs
 can cost millions of meat. At level 500, Delve stops so the telescope can be
-taken manually.
+taken manually. If equipment, normal stat buffs, and Gain cannot pass an MP
+test, Delve can drink one mulled hobo wine. This uses one point of inebriety.
