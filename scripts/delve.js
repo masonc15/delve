@@ -345,12 +345,18 @@ function improveStat(required, step, stat) {
             return true;
         case 1:
             stabilize(stat);
+            cliExecute("maximize " + required + " " + stat + " min, switch Left-Hand Man, switch Disembodied Hand");
             return true;
         case 2:
             maintainBuffs(ALL_STAT_BUFFS);
+            cliExecute("maximize " + required + " " + stat + " min, switch Left-Hand Man, switch Disembodied Hand");
             return true;
         case 3:
             maintainBuffs(STAT_BUFFS[stat]);
+            cliExecute("maximize " + required + " " + stat + " min, switch Left-Hand Man, switch Disembodied Hand");
+            return true;
+        case 4:
+            cliExecute("maximize " + stat + ", 0.01 max");
             return true;
     }
 
