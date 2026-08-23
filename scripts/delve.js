@@ -37,7 +37,10 @@ const {
     myPath,
     toSkill,
     haveSkill,
-    useSkill
+    useSkill,
+    myInebriety,
+    inebrietyLimit,
+    currentRound
 } = require('kolmafia');
 
 const {
@@ -178,6 +181,10 @@ function preflight() {
         throw new Error("Delve only supports unrestricted aftercore; " + pathName + " is a restricted path.");
     }
 
+    if (myInebriety() > inebrietyLimit()) {
+        throw new Error("You are overdrunk (" + myInebriety() + "/" + inebrietyLimit() + ") and cannot adventure in the basement.");
+    }
+
     if (!canAdventure(toLocation(`Fernswarthy's Basement`))) {
         throw new Error('You do not have access to the basement.');
     }
@@ -186,8 +193,16 @@ function preflight() {
         throw new Error('You do not have any adventures left.');
     }
 
+    if (currentRound() > 0) {
+        throw new Error('Already in combat. Finish or abort the current fight before running Delve.');
+    }
+
     if (!haveSkill(toSkill('Saucegeyser'))) {
-        throw new Error('You need Saucegeyser in the Fernswarthy CCS.');
+        throw new Error('You need Saucegeyser for the Fernswarthy ghost fight.');
+    }
+
+    if (haveEffect(toEffect('Beaten Up')) > 0) {
+        cliExecute("uneffect Beaten Up");
     }
 
     [...DIVINE_COMBAT_ITEMS, GAS_BALLOON].forEach((item) => {
@@ -234,7 +249,30 @@ function closetNonCombatItems(combatItem) {
  */
 function dive(action) {
     action = action || 1;
+    const initialLevel = getLevel(visitUrl("basement.php"));
+    const initialAdvs = myAdventures();
+
     visitUrl("basement.php?action=" + action + "&pwd");
+
+    // Action pages that start a fight leave you on fight.php. Reloading
+    // basement.php in that state re-parses the same round and desyncs
+    // KoLmafia's round counter from KoL's.
+    if (currentRound() > 0) {
+        return;
+    }
+
+    const newPage = visitUrl("basement.php");
+    const newLevel = getLevel(newPage);
+
+    if (newLevel > 0 && newLevel === initialLevel && myAdventures() === initialAdvs) {
+        if (myInebriety() > inebrietyLimit()) {
+            throw new Error("Diving failed because you are overdrunk (" + myInebriety() + "/" + inebrietyLimit() + ").");
+        }
+        if (myAdventures() <= 0) {
+            throw new Error("Diving failed because you ran out of adventures.");
+        }
+        throw new Error("Basement did not advance from Level " + initialLevel + ". Aborting loop.");
+    }
 }
 
 function tryMaximize(maximizerString) {
@@ -680,9 +718,24 @@ function main(args) {
             return;
         }
 
-        while (myAdventures() > 0) {
-            if (handleChallenge() >= 500) {
+        var previousLevel = 0;
+        var loopCountOnSameLevel = 0;
+
+        while (myAdventures() > 0 && myInebriety() <= inebrietyLimit()) {
+            var currentFloor = handleChallenge();
+            if (currentFloor >= 499) {
+                print("Stopped after floor 499. Open the Basement to view the level 500 reward.", "green");
                 return;
+            }
+
+            if (currentFloor === previousLevel) {
+                loopCountOnSameLevel++;
+                if (loopCountOnSameLevel >= 3) {
+                    throw new Error("Stuck on Basement Level " + currentFloor + ". Halting to prevent infinite loop.");
+                }
+            } else {
+                previousLevel = currentFloor;
+                loopCountOnSameLevel = 0;
             }
         }
     } catch (e) {
