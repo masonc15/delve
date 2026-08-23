@@ -158,19 +158,29 @@ function restoreRequiredHp(amount) {
 }
 
 function customRestoreMp(amount) {
+    var targetMp = Math.min(amount, myMaxmp());
+    if (myMp() >= targetMp) {
+        return;
+    }
+
     if (amount >= 1000 && myMaxmp() - myMp() >= amount) {
-        const sausagesToEat = Math.floor(amount / 1000);
-        const sausagesEatenToday = parseInt(getProperty('_sausagesEaten'), 10) || 0;
-        const sausagesRemainingToday = Math.max(0, 23 - sausagesEatenToday);
-        const casings = toItem('magical sausage casing');
+        var sausagesToEat = Math.floor(amount / 1000);
+        var sausagesEatenToday = parseInt(getProperty('_sausagesEaten'), 10) || 0;
+        var sausagesRemainingToday = Math.max(0, 23 - sausagesEatenToday);
+        var casings = toItem('magical sausage casing');
         if (sausagesToEat <= sausagesRemainingToday && availableAmount(casings) >= sausagesToEat) {
             if (eat(toItem('magical sausage'), sausagesToEat)) {
                 amount -= sausagesToEat * 1000;
+                targetMp = Math.min(amount, myMaxmp());
             }
         }
     }
 
-    if (!restoreMp(amount)) {
+    if (myMp() >= targetMp) {
+        return;
+    }
+
+    if (!restoreMp(targetMp) && myMp() < targetMp) {
         throw new Error("Could not restore enough MP.");
     }
 }
