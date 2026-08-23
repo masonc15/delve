@@ -40,6 +40,7 @@ const CHALLENGE_MAP = {
     "angel": REWARD + ",100",
     "duskdoor": REWARD + ",200",
     "lepbell": REWARD + ",300",
+    "lepbell2": REWARD + ",300",
     "corpse": REWARD + ",400",
     "chest": REWARD + ",500"
 };

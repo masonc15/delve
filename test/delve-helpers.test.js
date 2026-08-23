@@ -24,6 +24,11 @@ test("recognizes challenge images without a path or with mixed case", () => {
     assert.equal(getChallenge("BEERGOLEM.GIF"), "monster,X Bottles of Beer on a Golem");
 });
 
+test("recognizes the floor-300 reward as lepbell or lepbell2", () => {
+    assert.equal(getChallenge("lepbell.gif"), "reward,300");
+    assert.equal(getChallenge("<img src=\"/images/basement/lepbell2.gif\">"), "reward,300");
+});
+
 test("rejects malformed challenge pages", () => {
     assert.throws(() => getChallenge("<html>not a basement page</html>"), /Unrecognised challenge/);
     assert.equal(getLevel("<html>not a basement page</html>"), 0);
