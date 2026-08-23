@@ -121,6 +121,7 @@ function canSurviveMonster(setup) {
     const divineDamage = setup.divineDamage;
     const physicalResistance = setup.physicalResistance || 0;
     const jumpChance = setup.jumpChance || 0;
+    const stunRounds = setup.stunRounds || 0;
 
     if (physicalResistance >= 100 || jumpChance >= 100 || attack <= 0) {
         return true;
@@ -132,8 +133,9 @@ function canSurviveMonster(setup) {
     );
     const survivableRounds = Math.floor(maxHp / attack);
     const roundsToKill = Math.ceil(hp / actualDamage);
+    const damagingRounds = Math.max(0, roundsToKill - stunRounds);
 
-    return survivableRounds >= roundsToKill;
+    return survivableRounds >= damagingRounds;
 }
 
 module.exports = {

@@ -16,7 +16,7 @@ const {
     retrieveItem,
     restoreHp,
     restoreMp,
-    runCombat,
+    throwItem,
     myMaxmp,
     elementalResistance,
     print,
@@ -402,11 +402,42 @@ function improveStat(required, step, stat) {
 }
 
 /**
- * See if the given monster can be killed
- * @param {number} level  basement level
- * @param {Monster} m  monster
- * @return {boolean} true if monster can be killed
+ * Run one basement fight with one legal action per server round.
+ * @param {Monster} monster  basement monster
+ * @param {Item} combatItem  divine item for the highest buffed stat
  */
+function runBasementCombat(monster, combatItem) {
+    if (!isKnown(monster) || !isKnown(combatItem)) {
+        throw new Error("Could not prepare basement combat.");
+    }
+
+    dive();
+    var balloonUsed = false;
+    var actions = 0;
+    while (currentRound() > 0) {
+        actions++;
+        if (actions > 20) {
+            throw new Error("Combat with " + monster.name + " exceeded 20 actions.");
+        }
+
+        if (!balloonUsed && itemAmount(GAS_BALLOON) > 0) {
+            balloonUsed = true;
+            throwItem(GAS_BALLOON);
+            continue;
+        }
+
+        if ((monster.physicalResistance || 0) >= 100) {
+            visitUrl("fight.php?action=skill&whichskill=" + SAUCEGEYSER.id);
+            continue;
+        }
+
+        if (itemAmount(combatItem) <= 0) {
+            throw new Error("Ran out of " + combatItem.name + " during combat.");
+        }
+        throwItem(combatItem);
+    }
+}
+
 function checkMonster(level, m) {
     return canSurviveMonster({
         attack: Math.max(0, expectedDamage(m)),
@@ -414,7 +445,10 @@ function checkMonster(level, m) {
         maxHp: myMaxhp(),
         divineDamage: myBuffedstat(myHighestBuffedStat()),
         physicalResistance: m.physicalResistance || 0,
-        jumpChance: jumpChance(m)
+        jumpChance: jumpChance(m),
+        // A gas balloon prevents retaliation during at least the next two
+        // divine-item actions. Live combat can stun for longer.
+        stunRounds: 2
     });
 }
 
@@ -571,6 +605,7 @@ const TESTS = {
         }
 
         let movedItems = [];
+        var combatError = null;
         cliExecute('refresh inventory');
         try {
             movedItems = closetNonCombatItems(combatItem);
@@ -585,23 +620,27 @@ const TESTS = {
             restoreRequiredHp(myMaxhp());
             customRestoreMp(1000);
 
-            dive();
-            const combatResult = runCombat();
-            if (!combatResult || String(combatResult).trim() === '') {
-                throw new Error("Combat with " + m.name + " did not run.");
+            runBasementCombat(m, combatItem);
+            if (currentRound() > 0) {
+                throw new Error("Combat with " + m.name + " did not complete.");
             }
             if (myHp() <= 0 || haveEffect(toEffect('Beaten Up'))) {
                 throw new Error("Combat with " + m.name + " did not end safely.");
             }
         } catch (error) {
+            combatError = error;
+            throw error;
+        } finally {
             if (movedItems.length > 0) {
                 try {
                     restoreClosetedItems(movedItems);
                 } catch (restoreError) {
-                    throw new Error(error.message + " " + restoreError.message);
+                    if (combatError) {
+                        throw new Error(combatError.message + " " + restoreError.message);
+                    }
+                    throw restoreError;
                 }
             }
-            throw error;
         }
     },
     /**

@@ -60,3 +60,15 @@ test("uses conservative monster round boundaries", () => {
     assert.equal(canSurviveMonster({ ...setup, attack: 0, hp: 1000 }), true);
     assert.equal(canSurviveMonster({ ...setup, jumpChance: 100, hp: 1000 }), true);
 });
+
+test("counts guaranteed stun rounds before monster attacks", () => {
+    const level493Setup = {
+        attack: 1825,
+        hp: 10021,
+        maxHp: 6046,
+        divineDamage: 2159
+    };
+
+    assert.equal(canSurviveMonster(level493Setup), false);
+    assert.equal(canSurviveMonster({ ...level493Setup, stunRounds: 2 }), true);
+});

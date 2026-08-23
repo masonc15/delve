@@ -9,27 +9,11 @@ KoLmafia.
 
 - Fernswarthy's Basement unlocked. Complete [The Wizard of Ego](https://kol.coldfront.net/thekolwiki/index.php/The_Wizard_of_Ego) manually.
 - Saucegeyser skill.
-- The CCS below selected as KoLmafia's Custom Combat Script.
 - A current Git installation of [Gain](https://github.com/Ezandora/Gain). Delve was checked with Gain 1.2.5 at commit `75109224c2fd4485c48eed16cb590462220b2154`.
 
-```text
-[ default ]
-item gas balloon
-while !pastround 5
-    if hascombatitem divine noise
-        item divine noisemaker,divine noisemaker
-    endif
-    if hascombatitem divine can
-        item divine can of silly string,divine can of silly string
-    endif
-    if hascombatitem divine blow
-        item divine blowout,divine blowout
-    endif
-endwhile
-
-[ ghost of fernswarthy's ]
-skill saucegeyser
-```
+Delve controls basement monster fights with a short, bounded strategy. It uses
+one gas balloon and then one matching divine combat item per server round. It
+does not require Ambidextrous Funkslinging, WHAM, or SmartStasis.
 
 ## Scope and cautions
 
