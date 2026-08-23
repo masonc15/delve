@@ -176,9 +176,9 @@ function preflight() {
 }
 
 function restoreClosetedItems(items) {
-    for (let i = items.length - 1; i >= 0; i--) {
-        const item = items[i].item;
-        const count = items[i].count;
+    for (var i = items.length - 1; i >= 0; i--) {
+        var item = items[i].item;
+        var count = items[i].count;
         if (!takeCloset(count, item)) {
             throw new Error("Could not return " + count + " " + item.name + " from the closet.");
         }
@@ -242,10 +242,10 @@ function maintainBuffs(buffs) {
  * @return {Stat} highest stat
  */
 function highestStat(statFunc) {
-    let highest = toStat('none');
-
-    for (let i = 0; i < 3; i++) {
-        let stat = [MOX, MYS, MUS][i];
+    var highest = toStat('none');
+    var stats = [MOX, MYS, MUS];
+    for (var i = 0; i < 3; i++) {
+        var stat = stats[i];
         if (statFunc(stat) > statFunc(highest)) {
             highest = stat;
         }

@@ -72,10 +72,10 @@ function getChallenge(page) {
         throw new Error("Unrecognised challenge");
     }
 
-    const images = Object.keys(CHALLENGE_MAP);
-    for (let i = 0; i < images.length; i++) {
-        const image = images[i];
-        const imagePattern = new RegExp(
+    var images = Object.keys(CHALLENGE_MAP);
+    for (var i = 0; i < images.length; i++) {
+        var image = images[i];
+        var imagePattern = new RegExp(
             "(?:^|[^a-z0-9])" + escapeRegExp(image) + "\\.gif(?:[^a-z0-9]|$)",
             "i"
         );
