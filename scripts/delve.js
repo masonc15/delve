@@ -448,12 +448,14 @@ function runBasementCombat(monster, combatItem) {
     }
 }
 
-function checkMonster(level, m) {
+function checkMonster(level, m, attackStat) {
     return canSurviveMonster({
         attack: Math.max(0, expectedDamage(m)),
         hp: monsterHp(m),
         maxHp: myMaxhp(),
-        divineDamage: myBuffedstat(myHighestBuffedStat()),
+        // Score the stat that picked the divine item. Maximizing can change
+        // which stat is highest after the item was chosen.
+        divineDamage: myBuffedstat(attackStat),
         physicalResistance: m.physicalResistance || 0,
         jumpChance: jumpChance(m),
         // A gas balloon prevents retaliation during at least the next two
@@ -633,7 +635,7 @@ const TESTS = {
             retrieveRequired(1, GAS_BALLOON);
             cliExecute("maximize effective, hp, dr, da, " + attackStat);
 
-            if (!(ARGS.ignoreMonsterCheck || checkMonster(level, m))) {
+            if (!(ARGS.ignoreMonsterCheck || checkMonster(level, m, attackStat))) {
                 throw new Error("Won't survive fighting " + m.name + " at level " + level);
             }
 
