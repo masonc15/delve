@@ -697,7 +697,7 @@ const TESTS = {
             }
         }
 
-        restoreRequiredHp(required);
+        restoreRequiredHp(Math.ceil(required) + 1);
         dive();
     },
     /**
