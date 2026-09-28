@@ -784,7 +784,10 @@ function main(args) {
 
         while (myAdventures() > 0 && myInebriety() <= inebrietyLimit()) {
             var currentFloor = handleChallenge();
-            if (currentFloor >= 499) {
+            if (currentFloor >= 500) {
+                return;
+            }
+            if (currentFloor === 499) {
                 print("Stopped after floor 499. Open the Basement to view the level 500 reward.", "green");
                 return;
             }
