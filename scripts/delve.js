@@ -163,16 +163,16 @@ function customRestoreMp(amount) {
         return;
     }
 
-    if (amount >= 1000 && myMaxmp() - myMp() >= amount) {
-        var sausagesToEat = Math.floor(amount / 1000);
+    // Sausages cover whole thousands of the shortfall. The target stays an
+    // absolute MP level, so restoreMp below tops up whatever they leave.
+    var missingMp = targetMp - myMp();
+    if (missingMp >= 1000) {
+        var sausagesToEat = Math.floor(missingMp / 1000);
         var sausagesEatenToday = parseInt(getProperty('_sausagesEaten'), 10) || 0;
         var sausagesRemainingToday = Math.max(0, 23 - sausagesEatenToday);
         var casings = toItem('magical sausage casing');
         if (sausagesToEat <= sausagesRemainingToday && availableAmount(casings) >= sausagesToEat) {
-            if (eat(toItem('magical sausage'), sausagesToEat)) {
-                amount -= sausagesToEat * 1000;
-                targetMp = Math.min(amount, myMaxmp());
-            }
+            eat(toItem('magical sausage'), sausagesToEat);
         }
     }
 
