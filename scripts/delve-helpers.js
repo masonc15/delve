@@ -115,28 +115,32 @@ function requiredElement(level, e1Resistance, e2Resistance) {
  * Check whether the current combat setup is conservative enough.
  * A monster that always jumps or cannot deal damage is safe to attempt.
  */
-function canSurviveMonster(setup) {
-    const attack = setup.attack;
-    const hp = setup.hp;
-    const maxHp = setup.maxHp;
-    const divineDamage = setup.divineDamage;
-    const physicalResistance = setup.physicalResistance || 0;
-    const jumpChance = setup.jumpChance || 0;
-    const stunRounds = setup.stunRounds || 0;
+function isHarmless(setup) {
+    return (setup.physicalResistance || 0) >= 100
+        || (setup.jumpChance || 0) >= 100
+        || setup.attack <= 0;
+}
 
-    if (physicalResistance >= 100 || jumpChance >= 100 || attack <= 0) {
+/**
+ * Count the monster hits taken before the kill: one before the first action
+ * when the monster always gets the jump, then every round the stun misses.
+ */
+function hitsTaken(setup) {
+    const physicalResistance = setup.physicalResistance || 0;
+    const actualDamage = Math.max(
+        1,
+        setup.divineDamage - Math.floor(setup.divineDamage * physicalResistance / 100)
+    );
+    const roundsToKill = Math.ceil(setup.hp / actualDamage);
+    return (setup.ambushHits || 0) + Math.max(0, roundsToKill - (setup.stunRounds || 0));
+}
+
+function canSurviveMonster(setup) {
+    if (isHarmless(setup)) {
         return true;
     }
 
-    const actualDamage = Math.max(
-        1,
-        divineDamage - Math.floor(divineDamage * physicalResistance / 100)
-    );
-    const survivableRounds = Math.floor(maxHp / attack);
-    const roundsToKill = Math.ceil(hp / actualDamage);
-    const damagingRounds = Math.max(0, roundsToKill - stunRounds);
-
-    return survivableRounds >= damagingRounds;
+    return Math.floor(setup.maxHp / setup.attack) >= hitsTaken(setup);
 }
 
 module.exports = {

@@ -39,6 +39,7 @@ const fakeKolmafia = {
     itemAmount: () => 10,
     jumpChance: () => 0,
     // Muscle needs 8 hits (6 after stuns); Mysticality would need 4 (2).
+    monsterInitiative: () => 0,
     monsterHp: () => 8000,
     myAdventures: () => 1,
     myBasestat: () => 100,

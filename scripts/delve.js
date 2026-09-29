@@ -40,7 +40,8 @@ const {
     useSkill,
     myInebriety,
     inebrietyLimit,
-    currentRound
+    currentRound,
+    monsterInitiative
 } = require('kolmafia');
 
 const {
@@ -469,8 +470,8 @@ function runBasementCombat(monster, combatItem) {
     }
 }
 
-function checkMonster(level, m, attackStat) {
-    return canSurviveMonster({
+function monsterSetup(m, attackStat) {
+    return {
         attack: Math.max(0, expectedDamage(m)),
         hp: monsterHp(m),
         maxHp: myMaxhp(),
@@ -481,8 +482,15 @@ function checkMonster(level, m, attackStat) {
         jumpChance: jumpChance(m),
         // A gas balloon prevents retaliation during at least the next two
         // divine-item actions. Live combat can stun for longer.
-        stunRounds: 2
-    });
+        stunRounds: 2,
+        // Monsters with 10000 initiative, like the Beast with X Eyes, always
+        // hit once before the first action.
+        ambushHits: monsterInitiative(m) >= 10000 ? 1 : 0
+    };
+}
+
+function checkMonster(m, attackStat) {
+    return canSurviveMonster(monsterSetup(m, attackStat));
 }
 
 /**
@@ -666,7 +674,7 @@ const TESTS = {
             retrieveRequired(1, GAS_BALLOON);
             cliExecute("maximize effective, hp, dr, da, " + attackStat);
 
-            if (!(ARGS.ignoreMonsterCheck || checkMonster(level, m, attackStat))) {
+            if (!(ARGS.ignoreMonsterCheck || checkMonster(m, attackStat))) {
                 throw new Error("Won't survive fighting " + m.name + " at level " + level);
             }
 

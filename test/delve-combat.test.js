@@ -37,6 +37,7 @@ const fakeKolmafia = {
         return 0;
     },
     jumpChance: () => 100,
+    monsterInitiative: () => 0,
     monsterHp: () => 100,
     myAdventures: () => adventures,
     myBasestat: () => 100,

@@ -77,3 +77,18 @@ test("counts guaranteed stun rounds before monster attacks", () => {
     assert.equal(canSurviveMonster(level493Setup), false);
     assert.equal(canSurviveMonster({ ...level493Setup, stunRounds: 2 }), true);
 });
+
+// Floor 266 as seen live: a Beast with X Eyes always gets the jump.
+const level266Setup = {
+    attack: 577,
+    hp: 4232,
+    maxHp: 1435,
+    divineDamage: 956,
+    stunRounds: 2,
+    ambushHits: 1
+};
+
+test("counts the free hit from a monster that always gets the jump", () => {
+    assert.equal(canSurviveMonster({ ...level266Setup, divineDamage: 2116 }), true);
+    assert.equal(canSurviveMonster({ ...level266Setup, divineDamage: 2116, ambushHits: 3 }), false);
+});
