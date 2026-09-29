@@ -143,6 +143,40 @@ function canSurviveMonster(setup) {
     return Math.floor(setup.maxHp / setup.attack) >= hitsTaken(setup);
 }
 
+/**
+ * Lowest divine-item damage that kills the monster before it wins.
+ * @return {number} damage per hit, or Infinity when no damage is enough
+ */
+function requiredDivineDamage(setup) {
+    if (isHarmless(setup)) {
+        return 0;
+    }
+
+    // Hits left after the ambush must cover the rounds the stun misses.
+    const hitsLeft = Math.floor(setup.maxHp / setup.attack) - (setup.ambushHits || 0);
+    if (hitsLeft < 0) {
+        return Infinity;
+    }
+    const killRounds = hitsLeft + (setup.stunRounds || 0);
+    if (killRounds <= 0) {
+        return Infinity;
+    }
+
+    const physicalResistance = setup.physicalResistance || 0;
+    return Math.ceil(setup.hp / killRounds / (1 - physicalResistance / 100)) + 1;
+}
+
+/**
+ * Lowest max HP that survives every hit taken before the kill.
+ */
+function requiredMaxHp(setup) {
+    if (isHarmless(setup)) {
+        return 0;
+    }
+
+    return hitsTaken(setup) * setup.attack + 1;
+}
+
 module.exports = {
     CHALLENGE_MAP,
     getLevel,
@@ -152,5 +186,7 @@ module.exports = {
     requiredMp,
     requiredHp,
     requiredElement,
-    canSurviveMonster
+    canSurviveMonster,
+    requiredDivineDamage,
+    requiredMaxHp
 };

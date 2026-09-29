@@ -10,7 +10,9 @@ const {
     requiredMp,
     requiredHp,
     requiredElement,
-    canSurviveMonster
+    canSurviveMonster,
+    requiredDivineDamage,
+    requiredMaxHp
 } = require("../scripts/delve-helpers");
 
 test("recognizes every known basement challenge image", () => {
@@ -91,4 +93,17 @@ const level266Setup = {
 test("counts the free hit from a monster that always gets the jump", () => {
     assert.equal(canSurviveMonster({ ...level266Setup, divineDamage: 2116 }), true);
     assert.equal(canSurviveMonster({ ...level266Setup, divineDamage: 2116, ambushHits: 3 }), false);
+});
+
+test("finds the divine damage that makes a monster fight safe", () => {
+    const damage = requiredDivineDamage(level266Setup);
+    assert.equal(canSurviveMonster({ ...level266Setup, divineDamage: damage }), true);
+    assert.equal(canSurviveMonster({ ...level266Setup, divineDamage: damage - 2 }), false);
+    assert.equal(requiredDivineDamage({ ...level266Setup, maxHp: 500 }), Infinity);
+});
+
+test("finds the max HP that makes a monster fight safe", () => {
+    const maxHp = requiredMaxHp(level266Setup);
+    assert.equal(canSurviveMonster({ ...level266Setup, maxHp }), true);
+    assert.equal(canSurviveMonster({ ...level266Setup, maxHp: maxHp - 2 }), false);
 });

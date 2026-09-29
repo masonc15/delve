@@ -52,7 +52,9 @@ const {
     requiredMp,
     requiredHp,
     requiredElement,
-    canSurviveMonster
+    canSurviveMonster,
+    requiredDivineDamage,
+    requiredMaxHp
 } = require('./delve-helpers');
 
 // Stat objects
@@ -494,6 +496,42 @@ function checkMonster(m, attackStat) {
 }
 
 /**
+ * Raise divine-item damage (the attack stat) or max HP until the fight is safe.
+ * @param {Monster} m  basement monster
+ * @param {Stat} attackStat  stat behind the chosen divine item
+ * @param {number} step  current attempt number
+ * @return {boolean} true if something was done
+ */
+function improveMonsterOdds(m, attackStat, step) {
+    switch (step) {
+        case 0:
+            stabilize(attackStat);
+            return true;
+        case 1:
+            maintainBuffs(ALL_STAT_BUFFS);
+            return true;
+        case 2:
+            maintainBuffs(STAT_BUFFS[attackStat]);
+            return true;
+        case 3:
+        case 4:
+        case 5:
+            var damage = requiredDivineDamage(monsterSetup(m, attackStat));
+            if (isFinite(damage)) {
+                gainModifier(damage, String(attackStat).toLowerCase());
+            }
+            return true;
+        case 6:
+        case 7:
+        case 8:
+            gainModifier(requiredMaxHp(monsterSetup(m, attackStat)), "hp");
+            return true;
+    }
+
+    return false;
+}
+
+/**
  * See if have enough MP for the given level
  * @param {number} level  basement level
  * @return {boolean} true if have enough MP
@@ -674,8 +712,10 @@ const TESTS = {
             retrieveRequired(1, GAS_BALLOON);
             cliExecute("maximize effective, hp, dr, da, " + attackStat);
 
-            if (!(ARGS.ignoreMonsterCheck || checkMonster(m, attackStat))) {
-                throw new Error("Won't survive fighting " + m.name + " at level " + level);
+            for (var step = 0; !(ARGS.ignoreMonsterCheck || checkMonster(m, attackStat)); step++) {
+                if (!improveMonsterOdds(m, attackStat, step)) {
+                    throw new Error("Won't survive fighting " + m.name + " at level " + level);
+                }
             }
 
             restoreRequiredHp(myMaxhp());
