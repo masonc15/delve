@@ -59,6 +59,8 @@ function run(gainCallsNeeded) {
         myHp: () => 1000,
         myInebriety: () => 0,
         myLevel: () => 30,
+        myMeat: () => 1000000,
+        myPrimestat: () => gameValue("Mysticality"),
         myMaxhp: () => 1000,
         myMaxmp: () => 1000,
         myMp: () => 1000,

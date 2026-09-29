@@ -41,7 +41,8 @@ const {
     myInebriety,
     inebrietyLimit,
     currentRound,
-    monsterInitiative
+    monsterInitiative,
+    myMeat
 } = require('kolmafia');
 
 const {
@@ -391,14 +392,36 @@ function maximizeStat(stat) {
     cliExecute("maximize " + stat + ", switch Left-Hand Man, switch Disembodied Hand");
 }
 
+function modifierValue(modifier) {
+    if (modifier === "hp") return myMaxhp();
+    if (modifier === "mp") return myMaxmp();
+    return myBuffedstat(toStat(modifier));
+}
+
 /**
  * Buy potions with Gain until a modifier reaches the target. Each call spends
- * at most 100k meat, so a deep floor may need several.
+ * at most 100k meat, so a deep floor may need several. Gain's own output goes
+ * through print_html, which the session log never records, so log each call's
+ * target and result here.
  * @param {number} target  buffed value to reach
  * @param {string} modifier  Gain modifier name
  */
 function gainModifier(target, modifier) {
-    cliExecute("gain " + Math.ceil(target) + " " + modifier + " 1 turns");
+    const goal = Math.ceil(target);
+    const before = Math.floor(modifierValue(modifier));
+    const meatBefore = myMeat();
+    const command = "gain " + goal + " " + modifier + " 1 turns";
+    print("Gain: " + modifier + " " + before + " -> " + goal + " (" + command + ")", "blue");
+    const ok = cliExecute(command);
+    const after = Math.floor(modifierValue(modifier));
+    const shortBy = goal - after;
+    print(
+        "Gain: " + modifier + " now " + after
+            + (shortBy > 0 ? ", still " + shortBy + " short" : ", target reached")
+            + ", spent " + (meatBefore - myMeat()) + " meat"
+            + (ok ? "" : ", command failed"),
+        shortBy > 0 ? "orange" : "blue"
+    );
 }
 
 /**

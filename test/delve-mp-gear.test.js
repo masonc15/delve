@@ -60,6 +60,8 @@ const fakeKolmafia = {
     myHp: () => 1000,
     myInebriety: () => 14,
     myLevel: () => 30,
+    myMeat: () => 1000000,
+    myPrimestat: () => gameValue("Mysticality"),
     myMaxhp: () => 1000,
     myMaxmp: maxMp,
     myMp: maxMp,
