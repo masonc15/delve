@@ -1,6 +1,7 @@
 const assert = require("node:assert/strict");
 const Module = require("node:module");
 const { requiredStat } = require("../scripts/delve-helpers");
+const { assertValidMaximizer } = require("./maximizer-syntax");
 
 const level = 300;
 const required = requiredStat(level);
@@ -11,6 +12,7 @@ function run(gainCallsNeeded) {
         basementLevel: level,
         mysticality: 500,
         gainCommands: [],
+        maximizeCommands: [],
         printed: []
     };
 
@@ -30,6 +32,7 @@ function run(gainCallsNeeded) {
         availableAmount: () => 0,
         canAdventure: () => true,
         cliExecute: (command) => {
+            if (command.startsWith("maximize ")) state.maximizeCommands.push(command);
             if (command.startsWith("gain ")) {
                 state.gainCommands.push(command);
                 if (state.gainCommands.length >= gainCallsNeeded) {
@@ -109,6 +112,8 @@ assert.deepEqual(
     "Delve must ask Gain for the missing buffed stat"
 );
 assert.equal(passed.basementLevel, level + 1, "Delve must pass the stat test after Gain");
+assert.ok(passed.maximizeCommands.length > 0, "Delve must maximize the stat before buying potions");
+passed.maximizeCommands.forEach(assertValidMaximizer);
 
 // Gain never reaches the target, so Delve stops after its three calls.
 const failed = run(Infinity);

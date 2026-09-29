@@ -380,6 +380,25 @@ function checkStat(level, stat) {
 }
 
 /**
+ * Equip the best gear for a stat. KoLmafia reads each maximizer term as
+ * "[weight] keyword", so a target number must not precede the stat name.
+ * @param {Stat} stat  stat to maximize
+ */
+function maximizeStat(stat) {
+    cliExecute("maximize " + stat + ", switch Left-Hand Man, switch Disembodied Hand");
+}
+
+/**
+ * Buy potions with Gain until a modifier reaches the target. Each call spends
+ * at most 100k meat, so a deep floor may need several.
+ * @param {number} target  buffed value to reach
+ * @param {string} modifier  Gain modifier name
+ */
+function gainModifier(target, modifier) {
+    cliExecute("gain " + Math.ceil(target) + " " + modifier + " 1 turns");
+}
+
+/**
  * Improve the given stat
  * @param {number} required  necessary stat
  * @param {number} step  current attempt number
@@ -389,29 +408,24 @@ function checkStat(level, stat) {
 function improveStat(required, step, stat) {
     switch (step) {
         case 0:
-            cliExecute("maximize " + required + " " + stat + " min, switch Left-Hand Man, switch Disembodied Hand");
+            maximizeStat(stat);
             return true;
         case 1:
             stabilize(stat);
-            cliExecute("maximize " + required + " " + stat + " min, switch Left-Hand Man, switch Disembodied Hand");
+            maximizeStat(stat);
             return true;
         case 2:
             maintainBuffs(ALL_STAT_BUFFS);
-            cliExecute("maximize " + required + " " + stat + " min, switch Left-Hand Man, switch Disembodied Hand");
+            maximizeStat(stat);
             return true;
         case 3:
             maintainBuffs(STAT_BUFFS[stat]);
-            cliExecute("maximize " + required + " " + stat + " min, switch Left-Hand Man, switch Disembodied Hand");
+            maximizeStat(stat);
             return true;
         case 4:
-            cliExecute("maximize " + stat + ", 0.01 max");
-            return true;
         case 5:
         case 6:
-        case 7:
-            // Gain buys the cheapest potions for the missing stat. Each call
-            // spends at most 100k meat, so a deep floor may need several.
-            cliExecute("gain " + Math.ceil(required) + " " + String(stat).toLowerCase() + " 1 turns");
+            gainModifier(required, String(stat).toLowerCase());
             return true;
     }
 
