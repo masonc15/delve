@@ -595,14 +595,11 @@ function improveMp(required, step) {
             maintainBuffs(STAT_BUFFS[MYS]);
             return true;
         case 3:
-            gainModifier(required + 1, "mp");
-            return true;
         case 4:
         case 5:
-        case 6:
             gainMysticalityForMp(required + 1);
             return true;
-        case 7:
+        case 6:
             if (myInebriety() >= inebrietyLimit() || haveEffect(MAX_MP_DRINK_EFFECT) > 0) {
                 return false;
             }

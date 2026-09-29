@@ -5,7 +5,7 @@ const { assertValidMaximizer } = require("./maximizer-syntax");
 
 // Floor 346 as seen live: the MP test equipped MP gear, then maximized
 // Mysticality and lost it, and could not drink at the drunk limit. Gain adds
-// nothing when asked for MP, but raising Mysticality raises max MP.
+// nothing useful when asked for MP, but raising Mysticality raises max MP.
 const level = 346;
 const required = requiredMp(level);
 const state = {
@@ -110,9 +110,11 @@ const maximizes = state.commands.filter((command) => command.startsWith("maximiz
 maximizes.forEach(assertValidMaximizer);
 assert.ok(maximizes.every((command) => /^maximize mp,/.test(command)), "Delve must keep its MP gear on during the MP test");
 const gains = state.commands.filter((c) => c.startsWith("gain "));
-assert.match(gains[0], /^gain \d+ mp 1 turns$/, "Delve must try Gain on MP first");
-assert.match(gains[1], /^gain \d+ mysticality 1 turns$/, "Delve must then gain the Mysticality behind the missing MP");
-assert.equal(gains.length, 2, "Delve must stop calling Gain once the MP test passes");
+assert.deepEqual(
+    gains.map((command) => command.split(" ")[2]),
+    ["mysticality"],
+    "Delve must gain the Mysticality behind the missing MP, not MP itself"
+);
 assert.ok(
     state.printed.some((m) => /^Gain: mysticality \d+ -> \d+ \(gain /.test(m))
         && state.printed.some((m) => /^Gain: mysticality now \d+, target reached, spent \d+ meat$/.test(m)),
