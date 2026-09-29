@@ -42,6 +42,7 @@ const {
     inebrietyLimit,
     currentRound,
     monsterInitiative,
+    myPrimestat,
     myMeat
 } = require('kolmafia');
 
@@ -563,6 +564,22 @@ function checkMp(level) {
     return myMaxmp() > requiredMp(level);
 }
 
+/**
+ * Gain undervalues Mysticality percent buffs when asked for max MP, so ask it
+ * for the Mysticality that covers the missing MP instead. Mysticality classes
+ * get 1.5 MP per point before MP percent bonuses, so this errs toward buying
+ * a little extra.
+ * @param {number} targetMp  max MP to reach
+ */
+function gainMysticalityForMp(targetMp) {
+    const missingMp = targetMp - myMaxmp();
+    if (missingMp <= 0) {
+        return;
+    }
+    const mpPerPoint = myPrimestat() === MYS ? 1.5 : 1;
+    gainModifier(myBuffedstat(MYS) + missingMp / mpPerPoint, "mysticality");
+}
+
 function improveMp(required, step) {
     switch (step) {
         case 0:
@@ -578,11 +595,14 @@ function improveMp(required, step) {
             maintainBuffs(STAT_BUFFS[MYS]);
             return true;
         case 3:
-        case 4:
-        case 5:
             gainModifier(required + 1, "mp");
             return true;
+        case 4:
+        case 5:
         case 6:
+            gainMysticalityForMp(required + 1);
+            return true;
+        case 7:
             if (myInebriety() >= inebrietyLimit() || haveEffect(MAX_MP_DRINK_EFFECT) > 0) {
                 return false;
             }

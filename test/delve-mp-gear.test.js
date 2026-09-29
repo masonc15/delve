@@ -4,17 +4,21 @@ const { requiredMp } = require("../scripts/delve-helpers");
 const { assertValidMaximizer } = require("./maximizer-syntax");
 
 // Floor 346 as seen live: the MP test equipped MP gear, then maximized
-// Mysticality and lost it, and could not drink at the drunk limit.
+// Mysticality and lost it, and could not drink at the drunk limit. Gain adds
+// nothing when asked for MP, but raising Mysticality raises max MP.
 const level = 346;
 const required = requiredMp(level);
 const state = {
     adventures: 1,
     basementLevel: level,
     mpGear: false,
-    gainedMp: 0,
-    commands: []
+    mysticality: 3150,
+    commands: [],
+    printed: []
 };
-const maxMp = () => Math.floor(required) - 800 + (state.mpGear ? 400 : 0) + state.gainedMp;
+// Mysticality classes get 1.5 max MP per point of Mysticality.
+const startMp = Math.floor(required) - 488 - 400;
+const maxMp = () => startMp + Math.floor((state.mysticality - 3150) * 1.5) + (state.mpGear ? 400 : 0);
 
 const cache = new Map();
 function gameValue(name, extra) {
@@ -36,10 +40,8 @@ const fakeKolmafia = {
         if (command.startsWith("maximize ")) {
             state.mpGear = /^maximize mp,/.test(command);
         }
-        const gain = command.match(/^gain (\d+) mp 1 turns$/);
-        if (gain && state.commands.filter((c) => c.startsWith("gain ")).length >= 2) {
-            state.gainedMp = Number(gain[1]) - maxMp() + state.gainedMp;
-        }
+        const gain = command.match(/^gain (\d+) mysticality 1 turns$/);
+        if (gain) state.mysticality = Math.max(state.mysticality, Number(gain[1]));
         return true;
     },
     currentRound: () => 0,
@@ -56,7 +58,7 @@ const fakeKolmafia = {
     monsterHp: () => 100,
     myAdventures: () => state.adventures,
     myBasestat: () => 100,
-    myBuffedstat: () => 100,
+    myBuffedstat: (stat) => stat.name === "Mysticality" ? state.mysticality : 100,
     myHp: () => 1000,
     myInebriety: () => 14,
     myLevel: () => 30,
@@ -66,7 +68,7 @@ const fakeKolmafia = {
     myMaxmp: maxMp,
     myMp: maxMp,
     myPath: () => gameValue("none"),
-    print: () => {},
+    print: (message) => state.printed.push(message),
     putCloset: () => true,
     restoreHp: () => true,
     restoreMp: () => true,
@@ -107,6 +109,14 @@ try {
 const maximizes = state.commands.filter((command) => command.startsWith("maximize "));
 maximizes.forEach(assertValidMaximizer);
 assert.ok(maximizes.every((command) => /^maximize mp,/.test(command)), "Delve must keep its MP gear on during the MP test");
-assert.equal(state.commands.filter((c) => c.startsWith("gain ")).length, 2, "Delve must keep calling Gain until the MP test passes");
+const gains = state.commands.filter((c) => c.startsWith("gain "));
+assert.match(gains[0], /^gain \d+ mp 1 turns$/, "Delve must try Gain on MP first");
+assert.match(gains[1], /^gain \d+ mysticality 1 turns$/, "Delve must then gain the Mysticality behind the missing MP");
+assert.equal(gains.length, 2, "Delve must stop calling Gain once the MP test passes");
+assert.ok(
+    state.printed.some((m) => /^Gain: mysticality \d+ -> \d+ \(gain /.test(m))
+        && state.printed.some((m) => /^Gain: mysticality now \d+, target reached, spent \d+ meat$/.test(m)),
+    "Delve must log each Gain call's target and result"
+);
 assert.ok(!state.commands.some((c) => c.startsWith("drinksilent")), "Delve must not drink at the drunk limit");
 assert.equal(state.basementLevel, level + 1, "Delve must pass the MP test");
