@@ -543,17 +543,23 @@ function checkMp(level) {
 function improveMp(required, step) {
     switch (step) {
         case 0:
-            cliExecute("maximize " + Math.ceil(required + 1) + " mp, switch Left-Hand Man, switch Disembodied Hand");
+            cliExecute("maximize mp, switch Left-Hand Man, switch Disembodied Hand");
             return true;
         case 1:
+            // Max MP follows Mysticality. Buff it without re-maximizing,
+            // which would swap out the MP gear from step 0.
+            stabilize(MYS);
+            maintainBuffs(ALL_STAT_BUFFS);
+            return true;
         case 2:
+            maintainBuffs(STAT_BUFFS[MYS]);
+            return true;
         case 3:
-            improveStat(required, step, MYS);
-            return true;
         case 4:
-            cliExecute("gain " + Math.ceil(required) + " mp");
-            return true;
         case 5:
+            gainModifier(required + 1, "mp");
+            return true;
+        case 6:
             if (myInebriety() >= inebrietyLimit() || haveEffect(MAX_MP_DRINK_EFFECT) > 0) {
                 return false;
             }
