@@ -406,6 +406,13 @@ function improveStat(required, step, stat) {
         case 4:
             cliExecute("maximize " + stat + ", 0.01 max");
             return true;
+        case 5:
+        case 6:
+        case 7:
+            // Gain buys the cheapest potions for the missing stat. Each call
+            // spends at most 100k meat, so a deep floor may need several.
+            cliExecute("gain " + Math.ceil(required) + " " + String(stat).toLowerCase() + " 1 turns");
+            return true;
     }
 
     return false;
