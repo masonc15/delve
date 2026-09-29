@@ -529,7 +529,9 @@ function checkHp(level) {
 function improveHp(required, step) {
     switch (step) {
         case 0:
-            cliExecute("maximize " + Math.ceil(required + 1) + " hp, DA, switch Left-Hand Man, switch Disembodied Hand");
+            // Each point of DA below 1000 cuts the Gauntlet's damage by more
+            // than a point of HP adds, so weight DA well above HP.
+            cliExecute("maximize hp, 10 DA 1000 max, switch Left-Hand Man, switch Disembodied Hand");
             return true;
         case 1:
             haveSkill(toSkill('Ghostly Shell')) && useSkill(toSkill('Ghostly Shell'));
@@ -538,10 +540,16 @@ function improveHp(required, step) {
             haveSkill(toSkill('Astral Shell')) && useSkill(toSkill('Astral Shell'));
             return true;
         case 3:
-            improveStat(required, step, MUS);
+            // Max HP follows Muscle. Equalize it to the highest stat and buff
+            // it, without changing gear chosen for this test.
+            stabilize(MUS);
+            maintainBuffs(ALL_STAT_BUFFS);
+            maintainBuffs(STAT_BUFFS[MUS]);
             return true;
         case 4:
-            cliExecute("gain " + Math.ceil(required) + " hp");
+        case 5:
+        case 6:
+            gainModifier(required + 1, "hp");
             return true;
     }
 
@@ -711,14 +719,15 @@ const TESTS = {
     HP: function (level) {
         print("Level " + level + " tests your HP", "green");
 
-        const required = requiredHp(level, damageAbsorptionPercent());
+        // DA changes as gear and buffs change, so recompute the damage each try.
         for (var i = 0; !checkHp(level); i++) {
+            const required = requiredHp(level, damageAbsorptionPercent());
             if (!improveHp(required, i)) {
                 throw new Error("You need " + Math.ceil(required - myMaxhp()) + " more HP");
             }
         }
 
-        restoreRequiredHp(Math.ceil(required) + 1);
+        restoreRequiredHp(Math.ceil(requiredHp(level, damageAbsorptionPercent())) + 1);
         dive();
     },
     /**
