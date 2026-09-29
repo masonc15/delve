@@ -597,7 +597,9 @@ function improveElement(requirement, step, e1, e2) {
             improveHp(requirement, step - 3);
             return true;
         case 7:
-            cliExecute("gain " + requirement + " hp");
+        case 8:
+        case 9:
+            gainModifier(requirement + 1, "hp");
             return true;
     }
 
